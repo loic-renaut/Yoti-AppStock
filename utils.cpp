@@ -1,8 +1,24 @@
 #include <stdio.h>
 #include <curl/curl.h>
 #include <QDebug>
+#include <QDir>
 
 using namespace std;
+
+void newDir(QString dirPath)
+{
+    QDir dir(dirPath);
+    QDir dir2;
+    if(!dir.exists())
+    {
+        qDebug() << "création du répertoire " << dirPath;
+        dir2.mkpath(dirPath);
+    }
+    else
+    {
+        qDebug() << "erreur création du répertoire " << dirPath;
+    }
+}
 
 /*
  *

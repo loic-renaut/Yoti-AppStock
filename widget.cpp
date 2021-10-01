@@ -5,6 +5,9 @@
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
 {
+    // lors du lancement de l'application, on vérifie que le dossier images/images_boites existe bien dans le repertoire actif et on le créé si necessaire
+    newDir("images/images_boites");
+
     /*
      *
      * paramètres de connexion à la bdd
@@ -13,9 +16,9 @@ Widget::Widget(QWidget *parent)
      * */
     db = QSqlDatabase::addDatabase("QMYSQL");
     db.setHostName("localhost");
-    db.setUserName("root");
-    db.setPassword("1234");
-    db.setDatabaseName("jouets");
+    db.setUserName("operateur1");
+    db.setPassword("password1");
+    db.setDatabaseName("yoti_test");
 
     /*
      *
@@ -84,7 +87,7 @@ Widget::Widget(QWidget *parent)
     connect(page_chercherDialogButtonBox, &QDialogButtonBox::accepted, this, [&]() {
         if(db.open())
         {
-            QString s_requeteStock = "SELECT * FROM stock WHERE code_barres_identification = '" + page_chercherLineEditCodeBarres->text() +"';";
+            QString s_requeteStock = "SELECT * FROM exemplaire WHERE code_barres_exemplaire = '" + page_chercherLineEditCodeBarres->text() +"';";
             QSqlQuery requeteStock;
             if(requeteStock.exec(s_requeteStock))
             {
@@ -97,8 +100,8 @@ Widget::Widget(QWidget *parent)
                 {
                     while(requeteStock.next())
                     {
-                        qDebug() << requeteStock.value("code_barres_compartiment").toString();
-                        QString s_requeteCompartiment = "SELECT * FROM compartiment WHERE code_barres_compartiment = '" + requeteStock.value("code_barres_compartiment").toString() + "';";
+                        qDebug() << requeteStock.value("fk_code_barres_compartiment").toString();
+                        QString s_requeteCompartiment = "SELECT * FROM compartiment WHERE code_barres_compartiment = '" + requeteStock.value("fk_code_barres_compartiment").toString() + "';";
                         QSqlQuery requeteCompartiment;
 
                         if(requeteCompartiment.exec(s_requeteCompartiment))
@@ -106,7 +109,7 @@ Widget::Widget(QWidget *parent)
                             while(requeteCompartiment.next())
                             {
                                 page_resultatChercherLabelCodeEtage->setText(requeteCompartiment.value("code_etage").toString());
-                                page_resultatChercherLabelCodeIdentification->setText(requeteCompartiment.value("code_identification").toString());
+                                page_resultatChercherLabelCodeIdentification->setText(requeteCompartiment.value("code_compartiment").toString());
                                 page_resultatChercherLabelCodeRangee->setText(requeteCompartiment.value("code_rangee").toString());
                             }
                         }
@@ -115,17 +118,18 @@ Widget::Widget(QWidget *parent)
                             qDebug() << "erreur requeteCompartiment";
                         }
 
-                        QString s_requeteJeu = "SELECT chemin_photo FROM jeux_societe_reel WHERE code_barre = '000001';";
+
+                        QString s_requeteJeu = "SELECT url_photo FROM photo WHERE fk_id_jouet = " + requeteStock.value("fk_id_jouet").toString() + ";";
                         QSqlQuery requeteJeu;
 
                         if(requeteJeu.exec(s_requeteJeu))
                         {
                             while(requeteJeu.next())
                             {
-                                qDebug() << requeteJeu.value("chemin_photo").toString();
+                                qDebug() << requeteJeu.value("url_photo").toString();
                                 // download la photo + la mettre dans le label pour la photo
                                 QString s_chemin = qApp->applicationDirPath() + "/images/tmp_dl.jpg";
-                                downloadImage(requeteJeu.value("chemin_photo").toString(), s_chemin);
+                                downloadImage(requeteJeu.value("url_photo").toString(), s_chemin);
                                 QPixmap pixPhoto(s_chemin);
                                 page_resultatChercherLabelPhoto->setPixmap(pixPhoto.scaled(600,400,Qt::KeepAspectRatio));
                             }
@@ -180,7 +184,7 @@ Widget::Widget(QWidget *parent)
         // Etape 1 : on vérifie que le code-barres compartiment existe
         if(db.open())
         {
-            QString s_requeteCodeBarres = "SELECT * FROM jeux_societe_reel WHERE code_barre = '" + page_rangerLineEditCodeBarresIdentification->text() +"';";
+            QString s_requeteCodeBarres = "SELECT * FROM exemplaire WHERE code_barres_exemplaire = '" + page_rangerLineEditCodeBarresIdentification->text() +"';";
             QSqlQuery requeteCodeBarres;
             if(requeteCodeBarres.exec(s_requeteCodeBarres))
             {
@@ -203,7 +207,12 @@ Widget::Widget(QWidget *parent)
                         else
                         {
                             // si tout est ok on ajoute dans la bdd
+                            QSqlQuery query;
+                            QString s_query = "UPDATE exemplaire SET fk_code_barres_compartiment = " + page_rangerLineEditCodeBarresCompartiment->text() + ";";
+                            query.exec(s_query);
                             QMessageBox::information(this, "Information", "Article ajouté dans le stock !");
+                            // réinitialisation des champs
+                            page_rangerLineEditCodeBarresIdentification->setText("");
                         }
                     }
                     else
